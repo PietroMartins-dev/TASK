@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager - SENAC</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              purple: '#8b5cf6',
+              green: '#10b981',
+              yellow: '#f59e0b',
+              red: '#ef4444',
+              blue: '#3b82f6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full font-sans text-slate-100 bg-slate-950 antialiased flex flex-col min-h-screen">
+
+  <!-- TELA DE AUTENTICAÇÃO -->
+  <div id="auth-screen" class="flex min-h-full items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-md space-y-8 bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-2xl">
+      <div class="text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-600/20 text-purple-500 mb-4">
+          <i class="fa-solid fa-list-check text-3xl"></i>
+        </div>
+        <h2 id="auth-title" class="text-3xl font-extrabold tracking-tight text-white">Entrar na sua conta</h2>
+        <p id="auth-subtitle" class="mt-2 text-sm text-slate-400">Gerencie suas tarefas de forma simples e organizada</p>
+      </div>
+
+      <!-- Alertas de Erro / Sucesso Auth -->
+      <div id="auth-alert" class="hidden p-4 rounded-xl text-sm border"></div>
+
+      <form id="auth-form" class="mt-8 space-y-6">
+        <div class="space-y-4">
+          <div>
+            <label for="email" class="block text-sm font-medium text-slate-300">Endereço de E-mail</label>
+            <input id="email" name="email" type="email" required class="mt-1 block w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm" placeholder="seu@email.com">
+          </div>
+          <div id="password-field-container">
+            <div class="flex items-center justify-between mb-1">
+              <label for="password" class="block text-sm font-medium text-slate-300">Senha</label>
+              <button type="button" id="forgot-password-btn" class="text-xs text-purple-400 hover:text-purple-300 font-medium">Esqueci-me da palavra-passe</button>
+            </div>
+            <div class="relative">
+              <input id="password" name="password" type="password" required class="block w-full rounded-xl bg-slate-800 border border-slate-700 pl-4 pr-10 py-3 text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm" placeholder="••••••••">
+              <button type="button" id="toggle-password-visibility" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-200 focus:outline-none">
+                <i id="toggle-password-icon" class="fa-regular fa-eye text-sm"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <button type="submit" id="auth-submit-btn" class="group relative flex w-full justify-center rounded-xl bg-purple-600 py-3.5 px-4 text-sm font-semibold text-white hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all shadow-lg shadow-purple-600/30">
+            <span id="auth-btn-text">Entrar</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="text-center pt-2">
+        <button id="toggle-auth-mode" class="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors">
+          Não tem uma conta? Cadastre-se gratuitamente
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA PRINCIPAL (DASHBOARD DE TAREFAS) -->
+  <div id="app-screen" class="hidden flex-1 flex flex-col">
+    <!-- Navbar -->
+    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-check-double text-lg"></i>
+          </div>
+          <span class="font-bold text-lg text-white tracking-wide">Task<span class="text-purple-500">Manager</span></span>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <span id="user-email-display" class="text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 hidden sm:inline-block"></span>
+          <button id="logout-btn" class="flex items-center gap-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl transition-all border border-slate-700">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Sair</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <!-- Header do Painel -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+        <div>
+          <h1 class="text-2xl font-bold text-white">Minhas Tarefas</h1>
+          <p class="text-slate-400 text-sm mt-1">Organize suas atividades diárias com datas, horários e prioridades.</p>
+        </div>
+        <button id="open-new-task-modal" class="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold px-5 py-3 rounded-xl transition-all shadow-lg shadow-purple-600/25">
+          <i class="fa-solid fa-plus"></i>
+          <span>Nova Tarefa</span>
+        </button>
+      </div>
+
+      <!-- Navegação de Abas (Todas / Pendentes / Concluídas) -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4 flex-wrap gap-4">
+        <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+          <button data-tab="all" class="tab-btn active px-4 py-2 rounded-lg text-xs font-medium transition-all bg-purple-600 text-white shadow">
+            Todas (<span id="count-all">0</span>)
+          </button>
+          <button data-tab="pending" class="tab-btn px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+            Pendentes (<span id="count-pending">0</span>)
+          </button>
+          <button data-tab="completed" class="tab-btn px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+            Concluídas (<span id="count-completed">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid de Tarefas -->
+      <div id="tasks-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Renderizado dinamicamente pelo JavaScript -->
+      </div>
+
+      <!-- Mensagem de Lista Vazia -->
+      <div id="empty-state" class="hidden text-center py-16 px-4 bg-slate-900/30 rounded-2xl border border-dashed border-slate-800">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-500 text-2xl">
+          <i class="fa-regular fa-folder-open"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-300">Nenhuma tarefa encontrada</h3>
+        <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Você não tem tarefas nesta aba. Clique em "Nova Tarefa" para começar a se organizar.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL DE CRIAR TAREFA -->
+  <div id="task-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <h3 class="text-lg font-bold text-white">Criar Nova Tarefa</h3>
+        <button id="close-modal-btn" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Alerta no Modal -->
+      <div id="modal-alert" class="hidden p-3.5 rounded-xl text-xs border"></div>
+
+      <form id="task-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">NOME / TÍTULO DA TAREFA *</label>
+          <input type="text" id="task-title" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 placeholder-slate-500" placeholder="Ex: Entregar relatório de hardware">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">DATA</label>
+            <input type="date" id="task-date" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">HORÁRIO</label>
+            <input type="time" id="task-time" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">PRIORIDADE</label>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" name="priority" value="Baixa" checked class="peer sr-only">
+              <div class="py-2 text-center text-xs rounded-xl bg-slate-800 border border-slate-700 text-slate-400 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-400 font-medium transition-all">Baixa</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="priority" value="Média" class="peer sr-only">
+              <div class="py-2 text-center text-xs rounded-xl bg-slate-800 border border-slate-700 text-slate-400 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 peer-checked:text-amber-400 font-medium transition-all">Média</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="priority" value="Alta" class="peer sr-only">
+              <div class="py-2 text-center text-xs rounded-xl bg-slate-800 border border-slate-700 text-slate-400 peer-checked:border-rose-500 peer-checked:bg-rose-500/10 peer-checked:text-rose-400 font-medium transition-all">Alta</div>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-2">COR DA ETIQUETA</label>
+          <div class="flex items-center gap-3" id="color-picker">
+            <button type="button" data-color="purple" class="color-opt w-8 h-8 rounded-full bg-purple-500 ring-2 ring-offset-2 ring-offset-slate-900 ring-purple-500 transition-all"></button>
+            <button type="button" data-color="green" class="color-opt w-8 h-8 rounded-full bg-emerald-500 transition-all"></button>
+            <button type="button" data-color="yellow" class="color-opt w-8 h-8 rounded-full bg-amber-500 transition-all"></button>
+            <button type="button" data-color="red" class="color-opt w-8 h-8 rounded-full bg-rose-500 transition-all"></button>
+            <button type="button" data-color="blue" class="color-opt w-8 h-8 rounded-full bg-blue-500 transition-all"></button>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <button type="button" id="cancel-modal-btn" class="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all">Cancelar</button>
+          <button type="submit" id="save-task-btn" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-lg shadow-purple-600/30">Salvar Tarefa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT DO FIREBASE (V10 SDK MODULAR) E LÓGICA DA APLICAÇÃO -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getAuth, 
+      createUserWithEmailAndPassword, 
+      signInWithEmailAndPassword, 
+      sendPasswordResetEmail,
+      onAuthStateChanged, 
+      signOut 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      query, 
+      where, 
+      onSnapshot, 
+      deleteDoc, 
+      doc, 
+      updateDoc 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Configuração do Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBmn4lXTGuk0C7BHzemwGzvPLWH-d1uaDc",
+      authDomain: "task-senac.firebaseapp.com",
+      projectId: "task-senac",
+      storageBucket: "task-senac.firebasestorage.app",
+      messagingSenderId: "441026822846",
+      appId: "1:441026822846:web:286732fd844cd4272154ef",
+      measurementId: "G-98H4794N0Z"
+    };
+
+    // Inicialização
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Estado Local
+    let currentUser = null;
+    let isRegisterMode = false;
+    let currentTasks = [];
+    let activeTab = 'all';
+    let selectedColor = 'purple';
+    let unsubscribeSnapshot = null;
+    let hasWarnedDuplicate = false;
+
+    // Seletores do DOM
+    const authScreen = document.getElementById('auth-screen');
+    const appScreen = document.getElementById('app-screen');
+    const authForm = document.getElementById('auth-form');
+    const authTitle = document.getElementById('auth-title');
+    const authSubtitle = document.getElementById('auth-subtitle');
+    const authBtnText = document.getElementById('auth-btn-text');
+    const toggleAuthBtn = document.getElementById('toggle-auth-mode');
+    const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+    const passwordFieldContainer = document.getElementById('password-field-container');
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('toggle-password-visibility');
+    const togglePasswordIcon = document.getElementById('toggle-password-icon');
+    const authAlert = document.getElementById('auth-alert');
+    const userEmailDisplay = document.getElementById('user-email-display');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    const tasksContainer = document.getElementById('tasks-container');
+    const emptyState = document.getElementById('empty-state');
+    const taskModal = document.getElementById('task-modal');
+    const taskForm = document.getElementById('task-form');
+    const modalAlert = document.getElementById('modal-alert');
+    const taskTitleInput = document.getElementById('task-title');
+
+    // Contadores
+    const countAll = document.getElementById('count-all');
+    const countPending = document.getElementById('count-pending');
+    const countCompleted = document.getElementById('count-completed');
+
+    // Alternar Visibilidade da Senha (Olho)
+    togglePasswordBtn.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      
+      if (type === 'text') {
+        togglePasswordIcon.className = 'fa-regular fa-eye-slash text-sm text-purple-400';
+      } else {
+        togglePasswordIcon.className = 'fa-regular fa-eye text-sm text-slate-400';
+      }
+    });
+
+    // Alternar entre Login e Cadastro
+    toggleAuthBtn.addEventListener('click', () => {
+      isRegisterMode = !isRegisterMode;
+      authAlert.classList.add('hidden');
+      passwordFieldContainer.classList.remove('hidden');
+      passwordInput.setAttribute('required', 'required');
+
+      if (isRegisterMode) {
+        authTitle.textContent = 'Criar nova conta';
+        authSubtitle.textContent = 'Cadastre-se para acessar seu painel de tarefas';
+        authBtnText.textContent = 'Cadastrar';
+        toggleAuthBtn.textContent = 'Já tem uma conta? Faça login';
+        forgotPasswordBtn.classList.add('hidden');
+      } else {
+        authTitle.textContent = 'Entrar na sua conta';
+        authSubtitle.textContent = 'Gerencie suas tarefas de forma simples e organizada';
+        authBtnText.textContent = 'Entrar';
+        toggleAuthBtn.textContent = 'Não tem uma conta? Cadastre-se gratuitamente';
+        forgotPasswordBtn.classList.remove('hidden');
+      }
+    });
+
+    // Enviar E-mail de Redefinição de Senha
+    forgotPasswordBtn.addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      
+      authAlert.classList.add('hidden');
+
+      if (!email) {
+        authAlert.classList.remove('hidden');
+        authAlert.className = 'p-4 rounded-xl text-sm border bg-amber-500/10 border-amber-500/30 text-amber-400';
+        authAlert.textContent = 'Por favor, digite o seu e-mail no campo acima para enviar as instruções de redefinição.';
+        return;
+      }
+
+      try {
+        await sendPasswordResetEmail(auth, email);
+        authAlert.classList.remove('hidden');
+        authAlert.className = 'p-4 rounded-xl text-sm border bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
+        authAlert.textContent = 'E-mail de redefinição enviado com sucesso! Verifique a sua caixa de entrada e o spam.';
+      } catch (error) {
+        authAlert.classList.remove('hidden');
+        authAlert.className = 'p-4 rounded-xl text-sm border bg-rose-500/10 border-rose-500/30 text-rose-400';
+        if (error.code === 'auth/user-not-found') {
+          authAlert.textContent = 'Nenhuma conta encontrada com este endereço de e-mail.';
+        } else if (error.code === 'auth/invalid-email') {
+          authAlert.textContent = 'Por favor, insira um e-mail válido.';
+        } else {
+          authAlert.textContent = 'Erro ao enviar e-mail: ' + error.message;
+        }
+      }
+    });
+
+    // Submissão de Login/Cadastro
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = passwordInput.value;
+      
+      authAlert.classList.add('hidden');
+
+      try {
+        if (isRegisterMode) {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+      } catch (error) {
+        authAlert.classList.remove('hidden');
+        authAlert.className = 'p-4 rounded-xl text-sm border bg-rose-500/10 border-rose-500/30 text-rose-400';
+        
+        if (error.code === 'auth/email-already-in-use') {
+          authAlert.textContent = 'Este e-mail já está em uso por outro usuário.';
+        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+          authAlert.textContent = 'E-mail ou senha incorretos.';
+        } else if (error.code === 'auth/weak-password') {
+          authAlert.textContent = 'A senha deve conter pelo menos 6 caracteres.';
+        } else {
+          authAlert.textContent = 'Erro ao realizar autenticação: ' + error.message;
+        }
+      }
+    });
+
+    // Monitoramento do Estado de Autenticação
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      if (user) {
+        userEmailDisplay.textContent = user.email;
+        authScreen.classList.add('hidden');
+        appScreen.classList.remove('hidden');
+        subscribeToTasks(user.uid);
+      } else {
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        authScreen.classList.remove('hidden');
+        appScreen.classList.add('hidden');
+        currentTasks = [];
+      }
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', () => signOut(auth));
+
+    // Escutar tarefas do Firestore em tempo real
+    function subscribeToTasks(userId) {
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+      const q = query(
+        collection(db, "tasks"), 
+        where("userId", "==", userId)
+      );
+
+      unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        currentTasks = [];
+        snapshot.forEach((doc) => {
+          currentTasks.push({ id: doc.id, ...doc.data() });
+        });
+        renderTasks();
+      }, (error) => {
+        console.error("Erro ao carregar tarefas:", error);
+      });
+    }
+
+    // Modal Nova Tarefa
+    document.getElementById('open-new-task-modal').addEventListener('click', () => {
+      taskForm.reset();
+      modalAlert.classList.add('hidden');
+      selectedColor = 'purple';
+      hasWarnedDuplicate = false;
+      updateColorPicker();
+      taskModal.classList.remove('hidden');
+    });
+
+    document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+    document.getElementById('cancel-modal-btn').addEventListener('click', closeModal);
+
+    function closeModal() {
+      taskModal.classList.add('hidden');
+    }
+
+    // Resetar estado de aviso se o usuário alterar o texto do título
+    taskTitleInput.addEventListener('input', () => {
+      hasWarnedDuplicate = false;
+      modalAlert.classList.add('hidden');
+    });
+
+    // Seleção de Cores
+    const colorButtons = document.querySelectorAll('.color-opt');
+    colorButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedColor = btn.dataset.color;
+        updateColorPicker();
+      });
+    });
+
+    function updateColorPicker() {
+      const ringClasses = {
+        purple: 'ring-purple-500',
+        green: 'ring-emerald-500',
+        yellow: 'ring-amber-500',
+        red: 'ring-rose-500',
+        blue: 'ring-blue-500'
+      };
+
+      colorButtons.forEach(btn => {
+        btn.className = `color-opt w-8 h-8 rounded-full bg-${btn.dataset.color === 'purple' ? 'purple-500' : btn.dataset.color === 'green' ? 'emerald-500' : btn.dataset.color === 'yellow' ? 'amber-500' : btn.dataset.color === 'red' ? 'rose-500' : 'blue-500'} transition-all`;
+        if (btn.dataset.color === selectedColor) {
+          btn.classList.add('ring-2', 'ring-offset-2', 'ring-offset-slate-900', ringClasses[selectedColor]);
+        }
+      });
+    }
+
+    // Salvar Tarefa com AVISO de Nome Duplicado
+    taskForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const title = taskTitleInput.value.trim();
+      const date = document.getElementById('task-date').value;
+      const time = document.getElementById('task-time').value;
+      const priority = document.querySelector('input[name="priority"]:checked').value;
+
+      const nameExistsPending = currentTasks.some(t => !t.completed && t.title.toLowerCase() === title.toLowerCase());
+      if (nameExistsPending && !hasWarnedDuplicate) {
+        hasWarnedDuplicate = true;
+        modalAlert.classList.remove('hidden');
+        modalAlert.className = 'p-3.5 rounded-xl text-xs border bg-amber-500/10 border-amber-500/30 text-amber-400';
+        modalAlert.textContent = 'Aviso: Você já tem uma tarefa pendente com este mesmo nome. Clique em "Salvar Tarefa" novamente se desejar mantê-la assim.';
+        return;
+      }
+
+      modalAlert.classList.add('hidden');
+
+      try {
+        await addDoc(collection(db, "tasks"), {
+          userId: currentUser.uid,
+          title: title,
+          date: date || null,
+          time: time || null,
+          priority: priority,
+          color: selectedColor,
+          completed: false,
+          createdAt: new Date().toISOString()
+        });
+
+        closeModal();
+      } catch (error) {
+        console.error("Erro do Firestore:", error);
+        modalAlert.classList.remove('hidden');
+        modalAlert.className = 'p-3.5 rounded-xl text-xs border bg-rose-500/10 border-rose-500/30 text-rose-400';
+        modalAlert.textContent = 'Erro ao salvar tarefa no banco de dados. Verifique a sessão.';
+      }
+    });
+
+    // Abas de Filtro
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => {
+          b.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+        });
+        btn.className = 'tab-btn active px-4 py-2 rounded-lg text-xs font-medium transition-all bg-purple-600 text-white shadow';
+        activeTab = btn.dataset.tab;
+        renderTasks();
+      });
+    });
+
+    // Renderização das Tarefas
+    function renderTasks() {
+      const pendingTasks = currentTasks.filter(t => !t.completed);
+      const completedTasks = currentTasks.filter(t => t.completed);
+
+      countAll.textContent = currentTasks.length;
+      countPending.textContent = pendingTasks.length;
+      countCompleted.textContent = completedTasks.length;
+
+      let filtered = currentTasks;
+      if (activeTab === 'pending') filtered = pendingTasks;
+      if (activeTab === 'completed') filtered = completedTasks;
+
+      tasksContainer.innerHTML = '';
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      const colorBorders = {
+        purple: 'border-l-purple-500',
+        green: 'border-l-emerald-500',
+        yellow: 'border-l-amber-500',
+        red: 'border-l-rose-500',
+        blue: 'border-l-blue-500'
+      };
+
+      const priorityBadges = {
+        'Baixa': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        'Média': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        'Alta': 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+      };
+
+      filtered.forEach(task => {
+        const card = document.createElement('div');
+        card.className = `bg-slate-900 rounded-xl p-5 border border-slate-800 border-l-4 ${colorBorders[task.color] || 'border-l-purple-500'} shadow-lg flex flex-col justify-between space-y-4 group hover:border-slate-700 transition-all`;
+
+        card.innerHTML = `
+          <div class="space-y-2">
+            <div class="flex items-start justify-between gap-3">
+              <h4 class="font-semibold text-slate-100 ${task.completed ? 'line-through text-slate-500' : ''}">${escapeHtml(task.title)}</h4>
+              <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md border ${priorityBadges[task.priority]}">
+                ${task.priority}
+              </span>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-slate-400 pt-1">
+              ${task.date ? `<span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-slate-500"></i> ${formatDate(task.date)}</span>` : ''}
+              ${task.time ? `<span class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-slate-500"></i> ${task.time}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-3 border-t border-slate-800/60">
+            <button onclick="toggleTaskStatus('${task.id}', ${task.completed})" class="flex items-center gap-2 text-xs font-medium ${task.completed ? 'text-emerald-400' : 'text-slate-400 hover:text-white'} transition-colors">
+              <i class="${task.completed ? 'fa-solid fa-circle-check text-emerald-400 text-sm' : 'fa-regular fa-circle text-sm'}"></i>
+              <span>${task.completed ? 'Concluída' : 'Marcar Concluída'}</span>
+            </button>
+            <button onclick="deleteTask('${task.id}')" class="text-slate-500 hover:text-rose-400 text-xs p-1 transition-colors">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+
+        tasksContainer.appendChild(card);
+      });
+    }
+
+    // Funções Globais para Manipular Tarefas
+    window.toggleTaskStatus = async (id, currentStatus) => {
+      try {
+        await updateDoc(doc(db, "tasks", id), {
+          completed: !currentStatus
+        });
+      } catch (e) {
+        console.error("Erro ao atualizar status:", e);
+      }
+    };
+
+    window.deleteTask = async (id) => {
+      try {
+        await deleteDoc(doc(db, "tasks", id));
+      } catch (e) {
+        console.error("Erro ao apagar tarefa:", e);
+      }
+    };
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const [year, month, day] = dateStr.split('-');
+      return `${day}/${month}/${year}`;
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+  </script>
+</body>
+</html>
